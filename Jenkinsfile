@@ -25,7 +25,7 @@ pipeline {
             }
         }
 
-        stage('Create web directory') {
+        stage('Prepare web directory') {
             steps {
                 echo "Author: ${AUTHOR}, Env: ${ENVIRONMENT}"
                 sh 'rm -rf /var/jenkins_home/web || true'
@@ -33,15 +33,24 @@ pipeline {
             }
         }
 
-        stage('Drop container') {
+        stage('Copy app') {
             steps {
-                sh 'docker rm -f apache1 || true'
+                sh '''
+                echo "Contenido del workspace:"
+                ls -la
+                echo "Contenido de la carpeta web:"
+                ls -la web
+
+                cp -r web/* /var/jenkins_home/web
+                '''
             }
         }
 
         stage('Create container') {
             steps {
                 sh '''
+                docker rm -f apache1 || true
+
                 docker run -dit \
                 --name apache1 \
                 -p 9000:80 \
@@ -51,15 +60,21 @@ pipeline {
             }
         }
 
-        stage('Copy app') {
+        stage('Verify files inside container') {
             steps {
-                sh 'cp -r web/* /var/jenkins_home/web || true'
+                sh '''
+                echo "Archivos dentro del contenedor:"
+                docker exec apache1 ls /usr/local/apache2/htdocs/
+                '''
             }
         }
 
         stage('Test app') {
             steps {
-                sh 'curl http://localhost:9000 || true'
+                sh '''
+                echo "Probando aplicación..."
+                curl http://host.docker.internal:9000 || true
+                '''
             }
         }
     }
