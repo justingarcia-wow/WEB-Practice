@@ -33,11 +33,12 @@ pipeline {
             }
         }
 
-        stage('Copy app') {
+        stage('Copy app to Jenkins') {
             steps {
                 sh '''
                 echo "Contenido del workspace:"
                 ls -la
+
                 echo "Contenido de la carpeta web:"
                 ls -la web
 
@@ -46,16 +47,23 @@ pipeline {
             }
         }
 
-        stage('Create container') {
+        stage('Create Apache container') {
             steps {
                 sh '''
+                echo "Eliminando contenedor anterior si existe..."
                 docker rm -f apache1 || true
 
-                docker run -dit \
-                --name apache1 \
-                -p 9000:80 \
-                -v /var/jenkins_home/web:/usr/local/apache2/htdocs/ \
-                httpd
+                echo "Creando contenedor Apache..."
+                docker run -dit --name apache1 -p 9000:80 httpd
+                '''
+            }
+        }
+
+        stage('Copy app to container') {
+            steps {
+                sh '''
+                echo "Copiando archivos al contenedor..."
+                docker cp /var/jenkins_home/web/. apache1:/usr/local/apache2/htdocs/
                 '''
             }
         }
