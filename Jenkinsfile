@@ -1,48 +1,66 @@
 pipeline {
     agent any
-   
+
     stages {
-        stage('Create web directory')
-        {
-            input {
-              message 'Enter the data'
-              parameters {
-                    string(name:'AUTHOR', defaultValue: 'Sergio', description: 'Author of the web application deployment ')
-                    string(name:'ENVIRONMENT', defaultValue: 'Development',description: 'Environment to deploy')
-                 }
-            }
-            steps{
-                echo "The responsible of this project is ${AUTHOR} and and will be deployed in ${ENVIRONMENT}"
-                //Fisrt, drop the directory if exists
-                sh 'rm -rf /home/jenkins/web'
-                //Create the directory
-                sh 'mkdir /home/jenkins/web'
-                
+
+        stage('Checkout') {
+            steps {
+                checkout scm
             }
         }
-        stage('Drop the Apache HTTPD Docker container'){
+
+        stage('Input Data') {
             steps {
-            echo 'droping the container...'
-            sh 'docker rm -f apache1'
+                script {
+                    def userInput = input(
+                        message: 'Enter the data',
+                        parameters: [
+                            string(name:'AUTHOR', defaultValue:'Sergio'),
+                            string(name:'ENVIRONMENT', defaultValue:'Development')
+                        ]
+                    )
+                    env.AUTHOR = userInput['AUTHOR']
+                    env.ENVIRONMENT = userInput['ENVIRONMENT']
+                }
             }
         }
-        stage('Create the Apache httpd container') {
+
+        stage('Create web directory') {
             steps {
-            echo 'Creating the container...'
-            sh 'docker run -dit --name apache1 -p 9000:80  -v /home/jenkins/web:/usr/local/apache2/htdocs/ httpd'
+                echo "Author: ${AUTHOR}, Env: ${ENVIRONMENT}"
+                sh 'rm -rf /var/jenkins_home/web || true'
+                sh 'mkdir -p /var/jenkins_home/web'
             }
         }
-        stage('Copy the web application to the container directory') {
+
+        stage('Drop container') {
             steps {
-                echo 'Copying web application...'             
-                sh 'cp -r web/* /home/jenkins/web'
+                sh 'docker rm -f apache1 || true'
             }
         }
-        stage('Checking the app') {
+
+        stage('Create container') {
             steps {
-                echo 'Testing the web app'
-                sh 'wget http://localhost:9000'
+                sh '''
+                docker run -dit \
+                --name apache1 \
+                -p 9000:80 \
+                -v /var/jenkins_home/web:/usr/local/apache2/htdocs/ \
+                httpd
+                '''
             }
-        }       
+        }
+
+        stage('Copy app') {
+            steps {
+                sh 'cp -r web/* /var/jenkins_home/web || true'
+            }
+        }
+
+        stage('Test app') {
+            steps {
+                sh 'curl http://localhost:9000 || true'
+            }
+        }
     }
 }
