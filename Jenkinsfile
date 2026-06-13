@@ -15,7 +15,7 @@ pipeline {
                     def userInput = input(
                         message: 'Enter the data',
                         parameters: [
-                            string(name:'AUTHOR', defaultValue:'Sergio'),
+                            string(name:'AUTHOR', defaultValue:'Justing'),
                             string(name:'ENVIRONMENT', defaultValue:'Development')
                         ]
                     )
